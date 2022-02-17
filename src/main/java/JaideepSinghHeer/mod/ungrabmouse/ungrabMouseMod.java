@@ -24,6 +24,11 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
 import java.util.Set;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.Native;
+import com.sun.jna.Structure;
+import com.sun.jna.platform.win32.WinDef;
+import com.sun.jna.win32.W32APIOptions;
 
 @Mod(modid = ungrabMouseMod.MODID, version = ungrabMouseMod.VERSION, clientSideOnly = true, acceptedMinecraftVersions = "*",name = ungrabMouseMod.NAME, canBeDeactivated = true, guiFactory = "JaideepSinghHeer.mod.ungrabmouse.ungrabMouseMod$GUIFactory", updateJSON = "https://raw.githubusercontent.com/jaideepheer/MinecraftForge-ungrabMouseMod/master/src/main/resources/update.json")
 public class ungrabMouseMod
@@ -46,6 +51,7 @@ public class ungrabMouseMod
     private boolean isUngrabbed = false;
     private boolean doesGameWantUngrabbed;
     private MouseHelper oldMouseHelper;
+    private MouseHelper realMouseHelper;
     private boolean originalFocusPauseSetting = true;
 
     // Settings
@@ -53,6 +59,18 @@ public class ungrabMouseMod
     private boolean clicktoregrab = true;
     private boolean regrabOnGUIchange = false;
     private static Configuration config;
+
+	private User32 user32;
+
+	public ungrabMouseMod() {
+	    user32 = User32.INSTANCE;
+	}
+
+	public interface User32 extends com.sun.jna.Library {
+		ungrabMouseMod.User32 INSTANCE = (ungrabMouseMod.User32) Native.loadLibrary("user32", ungrabMouseMod.User32.class, W32APIOptions.DEFAULT_OPTIONS);
+		int ShowCursor(boolean bShow);
+	}
+
 
     /**
      * This function sets the mod's details to be displayed in the modlist.
@@ -95,6 +113,20 @@ public class ungrabMouseMod
         // Initialise keybind and register it.
         ungrabKeyBind = new KeyBinding("Ungrab Mouse", Keyboard.KEY_U,"key.categories.misc");
         ClientRegistry.registerKeyBinding(ungrabKeyBind);
+        Minecraft m = Minecraft.getMinecraft();
+        if(realMouseHelper==null) realMouseHelper = m.mouseHelper;
+        m.mouseHelper = new MouseHelper(){
+           @Override
+           public void grabMouseCursor(){
+				user32.ShowCursor(false);
+				realMouseHelper.grabMouseCursor();
+		   }
+           @Override
+           public void ungrabMouseCursor(){
+				user32.ShowCursor(true);
+				realMouseHelper.ungrabMouseCursor();
+		   }
+        };
     }
 
     /**
